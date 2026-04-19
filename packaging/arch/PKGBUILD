@@ -31,6 +31,9 @@ build() {
     export CARGO_TARGET_DIR=target
     cargo build --frozen --release
     ./target/release/git-todo --generate-man > git-todo.1
+    ./target/release/git-todo --generate-completion bash > git-todo.bash
+    ./target/release/git-todo --generate-completion zsh > _git-todo
+    ./target/release/git-todo --generate-completion fish > git-todo.fish
 }
 
 check() {
@@ -44,4 +47,7 @@ package() {
     install -Dm755 target/release/git-todo "${pkgdir}/usr/bin/git-todo"
     install -Dm644 git-todo.1 "${pkgdir}/usr/share/man/man1/git-todo.1"
     install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+    install -Dm644 git-todo.bash "${pkgdir}/usr/share/bash-completion/completions/git-todo"
+    install -Dm644 _git-todo "${pkgdir}/usr/share/zsh/site-functions/_git-todo"
+    install -Dm644 git-todo.fish "${pkgdir}/usr/share/fish/vendor_completions.d/git-todo.fish"
 }

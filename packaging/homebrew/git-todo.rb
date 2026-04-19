@@ -9,6 +9,7 @@ class GitTodo < Formula
   def install
     system "cargo", "install", *std_cargo_args
     (man1/"git-todo.1").write Utils.safe_popen_read(bin/"git-todo", "--generate-man")
+    generate_completions_from_executable(bin/"git-todo", "--generate-completion")
   end
 
   test do

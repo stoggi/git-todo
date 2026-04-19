@@ -9,6 +9,7 @@ repository = "https://github.com/stoggi/git-todo"
 [dependencies]
 clap = { version = "4", features = ["derive"] }
 clap_mangen = "0.2"
+clap_complete = "4"
 git2 = "0.19"
 serde = { version = "1", features = ["derive"] }
 toml = "0.8"

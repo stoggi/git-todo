@@ -27,13 +27,30 @@ rest:
 cargo install --path .
 ```
 
-Installs `git-todo` to `~/.cargo/bin/`. The man page isn't installed by cargo;
-generate and install it separately:
+Installs `git-todo` to `~/.cargo/bin/`. The man page and shell completions
+aren't installed by cargo; generate and install them separately. Man page:
 
 ```sh
 git todo --generate-man | sudo tee /usr/local/share/man/man1/git-todo.1 > /dev/null
 sudo mandb -q
 ```
+
+Shell completion (pick the line for your shell):
+
+```sh
+# fish
+git todo --generate-completion fish > ~/.config/fish/completions/git-todo.fish
+
+# zsh (ensure the dir is on $fpath)
+git todo --generate-completion zsh  > ~/.zsh/completions/_git-todo
+
+# bash
+git todo --generate-completion bash > ~/.local/share/bash-completion/completions/git-todo
+```
+
+Completion handles subcommand and flag names statically; todo id arguments
+on `done`, `show`, `label`, and `comment` are completed dynamically from the
+current store.
 
 After that, `man git-todo` and `git todo --help` both work.
 

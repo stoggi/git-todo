@@ -7,8 +7,9 @@ mod todo;
 
 use anyhow::{Context, Result};
 use clap::{CommandFactory, Parser};
+use std::io::Write;
 
-use cli::{Cli, Command};
+use cli::{Cli, Command, CompleteWhat};
 use commands::list::Filter;
 
 fn main() {
@@ -26,6 +27,15 @@ fn run() -> Result<()> {
         let man = clap_mangen::Man::new(cmd);
         let mut out = std::io::stdout().lock();
         man.render(&mut out).context("rendering man page")?;
+        return Ok(());
+    }
+
+    if let Some(shell) = cli.generate_completion {
+        let script = cli::completion_script(shell);
+        std::io::stdout()
+            .lock()
+            .write_all(&script)
+            .context("writing completion script")?;
         return Ok(());
     }
 
@@ -50,5 +60,8 @@ fn run() -> Result<()> {
         Some(Command::Show { id }) => commands::show::run(id),
         Some(Command::Label { id, edits }) => commands::label::run(id, edits),
         Some(Command::Comment { id, message }) => commands::comment::run(id, message),
+        Some(Command::Complete { what }) => match what {
+            CompleteWhat::Ids { open, all } => commands::complete::ids(open, all),
+        },
     }
 }
