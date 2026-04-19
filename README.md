@@ -80,6 +80,39 @@ git todo comment abc1 -m "whole or skim?"
 git todo comment abc1                  # opens $EDITOR
 ```
 
+## Syncing across machines
+
+The `todo` branch is a normal branch, so pushing is just:
+
+```sh
+git push origin todo
+```
+
+Pulling on another machine needs a little more care: plain `git pull` would
+merge origin's current branch into whatever you have checked out. You want to
+update the local `todo` branch directly (you never check it out). Use an
+explicit refspec:
+
+```sh
+git fetch origin todo:todo          # fails if local and remote diverged
+git fetch origin +todo:todo         # force local todo to match remote
+```
+
+To make plain `git fetch` always bring `todo` along, add it to the remote's
+fetch refspecs once:
+
+```sh
+git config --add remote.origin.fetch '+refs/heads/todo:refs/heads/todo'
+```
+
+After that, `git fetch` on the second machine updates `todo` alongside your
+normal branches, and `git todo` reflects the latest state.
+
+**Divergence**: if you add todos on both machines before syncing, the forcing
+refspec (`+todo:todo`) would overwrite local changes. The non-forcing form
+fails and makes you notice. Resolving a diverged `todo` means a manual
+`git merge` between the two tips.
+
 ## How it stores data
 
 Every change is one commit on `refs/heads/todo`. The branch's tree is a full
