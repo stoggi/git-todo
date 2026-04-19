@@ -1,0 +1,47 @@
+# Maintainer: Jeremy Stott <jeremy@stott.co.nz>
+pkgname=git-todo-git
+_pkgname=git-todo
+pkgver=r0.0000000
+pkgrel=1
+pkgdesc="Track todos as commits on a 'todo' branch"
+arch=('x86_64' 'aarch64')
+url="https://github.com/stoggi/git-todo"
+license=('MIT')
+depends=('git')
+makedepends=('cargo' 'git')
+provides=("${_pkgname}")
+conflicts=("${_pkgname}")
+source=("${_pkgname}::git+${url}.git")
+sha256sums=('SKIP')
+
+pkgver() {
+    cd "${_pkgname}"
+    printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+}
+
+prepare() {
+    cd "${_pkgname}"
+    export RUSTUP_TOOLCHAIN=stable
+    cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
+}
+
+build() {
+    cd "${_pkgname}"
+    export RUSTUP_TOOLCHAIN=stable
+    export CARGO_TARGET_DIR=target
+    cargo build --frozen --release
+    ./target/release/git-todo --generate-man > git-todo.1
+}
+
+check() {
+    cd "${_pkgname}"
+    export RUSTUP_TOOLCHAIN=stable
+    cargo test --frozen --release
+}
+
+package() {
+    cd "${_pkgname}"
+    install -Dm755 target/release/git-todo "${pkgdir}/usr/bin/git-todo"
+    install -Dm644 git-todo.1 "${pkgdir}/usr/share/man/man1/git-todo.1"
+    install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}
