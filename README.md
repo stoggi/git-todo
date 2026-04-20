@@ -148,7 +148,7 @@ id = "abc12345"
 title = "Buy milk"
 status = "open"
 created = 2026-04-19T10:00:00Z
-created_by = "Jeremy Stott <jeremy@stott.co.nz>"
+created_by = "Jeremy Stott <jeremy@example.com>"
 labels = ["chore", "shop"]
 body = "two litres from the corner shop"
 
@@ -163,7 +163,7 @@ Each operation becomes one commit whose message describes the action, so
 
 ```
 done: 74885aea
-comment: 74885aea by Jeremy Stott <jeremy@stott.co.nz>
+comment: 74885aea by Jeremy Stott <jeremy@example.com>
 label: 74885aea +chore +shop
 new: Buy milk (74885aea)
 ```
