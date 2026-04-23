@@ -1,5 +1,9 @@
 # git-todo
 
+> **Disclaimer:** this project was written in combination with an LLM
+> ([Claude Code](https://claude.com/claude-code), Opus 4.7).
+> Provided as-is, with no warranty — mileage may vary.
+
 Track todos as commits on a `todo` branch — a tiny, opinionated git-native
 todo tracker written in Rust.
 
