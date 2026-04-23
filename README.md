@@ -27,13 +27,7 @@ rest:
 cargo install --git https://github.com/stoggi/git-todo
 ```
 
-Installs `git-todo` to `~/.cargo/bin/`. The man page and shell completions
-aren't installed by cargo; generate and install them separately. Man page:
-
-```sh
-git todo --generate-man | sudo tee /usr/local/share/man/man1/git-todo.1 > /dev/null
-sudo mandb -q
-```
+Installs `git-todo` to `~/.cargo/bin/`.
 
 Shell completion (pick the line for your shell):
 
