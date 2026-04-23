@@ -21,10 +21,10 @@ rest:
 
 ## Install
 
-### From source
+### Using cargo
 
 ```sh
-cargo install --path .
+cargo install --git https://github.com/stoggi/git-todo
 ```
 
 Installs `git-todo` to `~/.cargo/bin/`. The man page and shell completions
