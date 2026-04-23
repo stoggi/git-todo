@@ -11,7 +11,7 @@ rest:
 
 - **Todos live on a visible `todo` branch**, not hidden refs. `git log todo`,
   `git show todo:todos/<id>.toml`, and GitHub's branch view all just work.
-- **Sync is plain `git push todo` / `git fetch todo/todo`** — no
+- **Sync is plain `git push origin todo` / `git fetch origin todo/todo`** — no
   custom refspecs, no separate sync command.
 - **Identity comes from `git config user.name` / `user.email`** — no separate
   identity layer to manage.
