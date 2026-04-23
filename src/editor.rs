@@ -34,10 +34,10 @@ fn open_editor(template: &str) -> Result<String> {
     let path = dir.join(format!("git-todo-{}.txt", std::process::id()));
     fs::write(&path, template).with_context(|| format!("writing {}", path.display()))?;
 
-    let status = Command::new("sh")
-        .arg("-c")
-        .arg(format!("{editor} \"$@\""))
-        .arg("sh")
+    // Exec the editor directly — no shell, no word splitting. `$EDITOR` is
+    // the whole program name. Multi-word values like "code -w" won't work;
+    // users who want flags should point $EDITOR at a wrapper script.
+    let status = Command::new(&editor)
         .arg(&path)
         .status()
         .with_context(|| format!("launching editor `{editor}`"))?;

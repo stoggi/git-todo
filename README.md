@@ -76,6 +76,9 @@ git todo comment abc1 -m "whole or skim?"
 git todo comment abc1                  # opens $EDITOR
 ```
 
+`$EDITOR` is exec'd directly with no shell, so multi-word values like
+`code -w` won't work — point `$EDITOR` at a wrapper script if you need flags.
+
 ## Syncing across machines
 
 The `todo` branch is a normal branch, so pushing is just:
