@@ -151,6 +151,67 @@ pub fn is_valid_id(s: &str) -> bool {
     s.len() == ID_LEN && s.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
 }
 
+// Generous ceilings on loaded field sizes. They exist to bound memory for a
+// crafted commit (e.g. a 1 GB title), not to enforce product limits.
+const MAX_SINGLE_LINE: usize = 1024;
+const MAX_BODY: usize = 64 * 1024;
+
+/// Validate a todo deserialized from the todo branch (an untrusted source).
+///
+/// Rejects:
+/// - ids that aren't 8 lowercase hex chars (shell-completion injection)
+/// - control characters in any field (terminal-escape injection when printed;
+///   newlines in single-line fields also corrupt commit messages built from
+///   them, e.g. `comment: {id} by {author}`)
+/// - fields exceeding `MAX_SINGLE_LINE` / `MAX_BODY`
+pub fn validate_loaded(todo: &Todo) -> Result<(), String> {
+    if !is_valid_id(&todo.id) {
+        return Err(format!(
+            "invalid id `{}` (expected 8 lowercase hex chars)",
+            todo.id
+        ));
+    }
+    check_field("title", &todo.title, false)?;
+    check_field("created_by", &todo.created_by, false)?;
+    if let Some(by) = todo.done_by.as_deref() {
+        check_field("done_by", by, false)?;
+    }
+    check_field("body", &todo.body, true)?;
+    for l in &todo.labels {
+        check_field("label", l, false)?;
+    }
+    for c in &todo.comments {
+        check_field("comment.by", &c.by, false)?;
+        check_field("comment.body", &c.body, true)?;
+    }
+    Ok(())
+}
+
+fn check_field(name: &str, s: &str, multiline: bool) -> Result<(), String> {
+    let max = if multiline { MAX_BODY } else { MAX_SINGLE_LINE };
+    if s.len() > max {
+        return Err(format!("{name} exceeds {max} bytes"));
+    }
+    if let Some(bad) = s.chars().find(|&c| is_forbidden(c, multiline)) {
+        return Err(format!(
+            "{name} contains forbidden control char U+{:04X}",
+            bad as u32
+        ));
+    }
+    Ok(())
+}
+
+fn is_forbidden(c: char, allow_newline: bool) -> bool {
+    match c {
+        '\t' => false,
+        '\n' if allow_newline => false,
+        c if (c as u32) < 0x20 => true,
+        '\u{7F}' => true,
+        c if (0x80..=0x9F).contains(&(c as u32)) => true,
+        _ => false,
+    }
+}
+
 fn generate_id(created: &DateTime<Utc>, title: &str, author: &str) -> String {
     let mut hasher = Sha1::new();
     hasher.update(created.to_rfc3339().as_bytes());
@@ -278,5 +339,63 @@ mod tests {
         assert!(LabelEdit::parse("").is_err());
         assert!(LabelEdit::parse("+").is_err());
         assert!(LabelEdit::parse("+with space").is_err());
+    }
+
+    fn good_todo() -> Todo {
+        Todo::new(
+            "Buy milk".into(),
+            "two litres".into(),
+            "Jeremy <j@example.com>".into(),
+            fixed_time(),
+        )
+    }
+
+    #[test]
+    fn validate_loaded_accepts_freshly_created_todo() {
+        assert!(validate_loaded(&good_todo()).is_ok());
+    }
+
+    #[test]
+    fn validate_loaded_rejects_escape_in_title() {
+        let mut t = good_todo();
+        // ANSI CSI (clear screen) — would execute in terminal if printed raw.
+        t.title = "pwn\x1b[2J".into();
+        assert!(validate_loaded(&t).is_err());
+    }
+
+    #[test]
+    fn validate_loaded_rejects_newline_in_author() {
+        let mut t = good_todo();
+        t.created_by = "Alice\nInjected-Header: x".into();
+        assert!(validate_loaded(&t).is_err());
+    }
+
+    #[test]
+    fn validate_loaded_allows_newlines_in_body() {
+        let mut t = good_todo();
+        t.body = "line one\nline two\n".into();
+        assert!(validate_loaded(&t).is_ok());
+    }
+
+    #[test]
+    fn validate_loaded_rejects_oversized_title() {
+        let mut t = good_todo();
+        t.title = "a".repeat(MAX_SINGLE_LINE + 1);
+        assert!(validate_loaded(&t).is_err());
+    }
+
+    #[test]
+    fn validate_loaded_rejects_c1_control_in_body() {
+        let mut t = good_todo();
+        // U+0085 NEL — a C1 control.
+        t.body = "oops\u{85}here".into();
+        assert!(validate_loaded(&t).is_err());
+    }
+
+    #[test]
+    fn validate_loaded_rejects_del_in_comment_author() {
+        let mut t = good_todo();
+        t.add_comment("Alice\x7F".into(), "hi".into(), fixed_time());
+        assert!(validate_loaded(&t).is_err());
     }
 }

@@ -1,7 +1,7 @@
 use anyhow::{Context, Result, anyhow};
 use git2::{ErrorCode, ObjectType, Oid, Repository, Signature};
 
-use crate::todo::{Todo, is_valid_id};
+use crate::todo::{Todo, validate_loaded};
 
 const TODO_REF: &str = "refs/heads/todo";
 const TODOS_DIR: &str = "todos";
@@ -81,12 +81,8 @@ impl Repo {
                 .with_context(|| format!("todo file {name} is not valid UTF-8"))?;
             let todo = Todo::from_toml(s)
                 .with_context(|| format!("parsing todo file {name}"))?;
-            if !is_valid_id(&todo.id) {
-                return Err(anyhow!(
-                    "todo file {name} has invalid id `{}` (expected 8 lowercase hex chars)",
-                    todo.id
-                ));
-            }
+            validate_loaded(&todo)
+                .map_err(|e| anyhow!("rejecting todo file {name}: {e}"))?;
             if name != format!("{}.toml", todo.id) {
                 return Err(anyhow!(
                     "todo file {name} does not match its id `{}`",
