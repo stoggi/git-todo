@@ -17,3 +17,4 @@ chrono = { version = "0.4", features = ["serde"] }
 anyhow = "1"
 sha1 = "0.10"
 hex = "0.4"
+tempfile = "3.27.0"

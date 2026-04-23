@@ -1,8 +1,10 @@
 use std::env;
 use std::fs;
+use std::io::Write;
 use std::process::Command;
 
 use anyhow::{Context, Result, bail};
+use tempfile::NamedTempFile;
 
 const NEW_TEMPLATE: &str = "\n\n\
     # Enter the todo title on the first non-comment line.\n\
@@ -30,25 +32,28 @@ pub fn compose_comment() -> Result<String> {
 
 fn open_editor(template: &str) -> Result<String> {
     let editor = pick_editor();
-    let dir = env::temp_dir();
-    let path = dir.join(format!("git-todo-{}.txt", std::process::id()));
-    fs::write(&path, template).with_context(|| format!("writing {}", path.display()))?;
+    // NamedTempFile uses O_EXCL with a randomised filename, so a pre-seeded
+    // symlink at the target path causes creation to fail rather than letting
+    // us truncate or read whatever the symlink points at. The file is
+    // unlinked when `tmp` drops, even on the error paths below.
+    let mut tmp = NamedTempFile::with_prefix_in("git-todo-", env::temp_dir())
+        .context("creating editor temp file")?;
+    tmp.write_all(template.as_bytes())
+        .with_context(|| format!("writing {}", tmp.path().display()))?;
 
     // Exec the editor directly — no shell, no word splitting. `$EDITOR` is
     // the whole program name. Multi-word values like "code -w" won't work;
     // users who want flags should point $EDITOR at a wrapper script.
     let status = Command::new(&editor)
-        .arg(&path)
+        .arg(tmp.path())
         .status()
         .with_context(|| format!("launching editor `{editor}`"))?;
     if !status.success() {
-        let _ = fs::remove_file(&path);
         bail!("editor exited with status {status}");
     }
 
-    let raw = fs::read_to_string(&path).with_context(|| format!("reading {}", path.display()))?;
-    let _ = fs::remove_file(&path);
-    Ok(raw)
+    fs::read_to_string(tmp.path())
+        .with_context(|| format!("reading {}", tmp.path().display()))
 }
 
 fn pick_editor() -> String {
