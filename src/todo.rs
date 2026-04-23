@@ -142,6 +142,15 @@ impl LabelEdit {
     }
 }
 
+/// True if `s` is a well-formed todo id: exactly `ID_LEN` lowercase hex chars.
+///
+/// Why: ids flow into shell completion output (`git-todo complete ids`), where
+/// bash's `compgen -W` would re-expand a malicious id like `aa$(...)` and run
+/// arbitrary code. Keeping ids strictly hex blocks that at the boundary.
+pub fn is_valid_id(s: &str) -> bool {
+    s.len() == ID_LEN && s.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+}
+
 fn generate_id(created: &DateTime<Utc>, title: &str, author: &str) -> String {
     let mut hasher = Sha1::new();
     hasher.update(created.to_rfc3339().as_bytes());
@@ -240,6 +249,21 @@ mod tests {
         assert!(added.is_empty());
         assert_eq!(removed, vec!["a"]);
         assert!(t.labels.is_empty());
+    }
+
+    #[test]
+    fn is_valid_id_accepts_lowercase_hex_only() {
+        assert!(is_valid_id("0123abcd"));
+        assert!(is_valid_id("cafef00d"));
+        // wrong length
+        assert!(!is_valid_id(""));
+        assert!(!is_valid_id("abc"));
+        assert!(!is_valid_id("0123abcde"));
+        // uppercase hex rejected (generate_id emits lowercase)
+        assert!(!is_valid_id("CAFEF00D"));
+        // shell-metachar payload from the exploit scenario
+        assert!(!is_valid_id("aa$(touch"));
+        assert!(!is_valid_id("aa\nbbccdd"));
     }
 
     #[test]
