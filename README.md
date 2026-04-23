@@ -46,8 +46,7 @@ Completion handles subcommand and flag names statically; todo id arguments
 on `done`, `show`, `label`, and `comment` are completed dynamically from the
 current store.
 
-After that, `man git-todo` and `git todo --help` both work.
-
+Run `git todo -h` for help.
 
 ## Usage
 
