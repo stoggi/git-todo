@@ -2,24 +2,23 @@
 
 > **Disclaimer:** this project was written in combination with an LLM
 > ([Claude Code](https://claude.com/claude-code), Opus 4.7).
-> Provided as-is, with no warranty — mileage may vary.
+> Provided as-is, with no warranty, mileage may vary.
 
-Track todos as commits on a `todo` branch — a tiny, opinionated git-native
+Track todos as commits on a `todo` branch. A tiny, opinionated git-native
 todo tracker written in Rust.
 
 Inspired by [git-bug](https://github.com/MichaelMure/git-bug), but deliberately
 stripped down. git-bug's design is powerful (event-sourced DAG, Lamport
-clocks, distributed identity) — overkill if all you want is a todo list that
+clocks, distributed identity). Overkill if all you want is a todo list that
 lives next to your code. git-todo keeps the parts that matter and drops the
 rest:
 
 - **Todos live on a visible `todo` branch**, not hidden refs. `git log todo`,
   `git show todo:todos/<id>.toml`, and GitHub's branch view all just work.
-- **Sync is plain `git push origin todo` / `git fetch origin todo`** — no
-  custom refspecs, no separate sync command.
-- **Identity comes from `git config user.name` / `user.email`** — no separate
+- **Sync is plain `git push origin todo` / `git fetch origin todo`**
+- **Identity comes from `git config user.name` / `user.email`** - no separate
   identity layer to manage.
-- **Works as a git subcommand**: `git todo new`, `git todo done`, etc. — the
+- **Works as a git subcommand**: `git todo new`, `git todo done`, etc. the
   binary is named `git-todo` and git's built-in subcommand discovery does the
   rest.
 
@@ -81,7 +80,7 @@ git todo comment abc1                  # opens $EDITOR
 ```
 
 `$EDITOR` is exec'd directly with no shell, so multi-word values like
-`code -w` won't work — point `$EDITOR` at a wrapper script if you need flags.
+`code -w` won't work. Point `$EDITOR` at a wrapper script if you need flags.
 
 ## Syncing across machines
 
@@ -154,7 +153,7 @@ label: 74885aea +chore +shop
 new: Buy milk (74885aea)
 ```
 
-The `todo` branch is never checked out — git-todo manipulates it directly via
+The `todo` branch is never checked out - git-todo manipulates it directly via
 libgit2. Your working tree is never touched.
 
 ## Development
