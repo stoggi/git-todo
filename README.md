@@ -54,20 +54,6 @@ current store.
 
 After that, `man git-todo` and `git todo --help` both work.
 
-### Arch Linux (AUR)
-
-A `git-todo-git` PKGBUILD is included under `packaging/arch/`. Once published
-to the AUR, install with your favourite helper:
-
-```sh
-yay -S git-todo-git
-```
-
-### Homebrew
-
-```sh
-brew install --HEAD https://raw.githubusercontent.com/stoggi/git-todo/main/packaging/homebrew/git-todo.rb
-```
 
 ## Usage
 
