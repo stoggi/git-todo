@@ -163,6 +163,8 @@ impl Repo {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
+
     use super::*;
     use chrono::Utc;
     use tempfile::TempDir;
@@ -184,6 +186,7 @@ mod tests {
             String::new(),
             "Test <test@example.com>".into(),
             Utc::now(),
+            &HashSet::new(),
         )
     }
 

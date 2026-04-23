@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+#[cfg(test)]
 use std::path::Path;
 
 use anyhow::{Result, anyhow, bail};
@@ -48,18 +50,16 @@ impl Store {
     pub fn add(&mut self, title: String, body: String) -> Result<&Todo> {
         let author = self.repo.identity_string()?;
         let now = Utc::now();
-        // Capture the new todo (and its deterministic id) once. On retry the
-        // same id is used, so a racing twin that already added it is detected
-        // and treated as success.
-        let new_todo = Todo::new(title, body, author, now);
-        let id = new_todo.id.clone();
-        let message = format!("new: {} ({})", new_todo.title, id);
         let idx = self.commit_with_retry(&mut |todos| {
-            if let Some(i) = todos.iter().position(|t| t.id == id) {
-                return Ok((i, message.clone()));
-            }
-            todos.push(new_todo.clone());
-            Ok((todos.len() - 1, message.clone()))
+            // Re-derived per attempt: on a CAS retry the reloaded `todos` may
+            // contain a racing-twin id that we'd collide with at salt 0.
+            let new_todo = {
+                let taken: HashSet<&str> = todos.iter().map(|t| t.id.as_str()).collect();
+                Todo::new(title.clone(), body.clone(), author.clone(), now, &taken)
+            };
+            let message = format!("new: {} ({})", new_todo.title, new_todo.id);
+            todos.push(new_todo);
+            Ok((todos.len() - 1, message))
         })?;
         Ok(&self.todos[idx])
     }

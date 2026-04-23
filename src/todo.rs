@@ -1,6 +1,7 @@
+use std::collections::HashSet;
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sha1::{Digest, Sha1};
 
 pub const ID_LEN: usize = 8;
 
@@ -40,8 +41,23 @@ pub struct Todo {
 }
 
 impl Todo {
-    pub fn new(title: String, body: String, author: String, created: DateTime<Utc>) -> Self {
-        let id = generate_id(&created, &title, &author);
+    /// Construct a new todo with a random id that isn't already in `taken`.
+    /// `taken` is the set of ids currently in the store; with ID_LEN=8
+    /// (32 bits) the birthday bound is ~65k todos, so a random draw can
+    /// collide. We re-roll until we find a free id.
+    pub fn new(
+        title: String,
+        body: String,
+        author: String,
+        created: DateTime<Utc>,
+        taken: &HashSet<&str>,
+    ) -> Self {
+        let id = loop {
+            let candidate = random_id();
+            if !taken.contains(candidate.as_str()) {
+                break candidate;
+            }
+        };
         Self {
             id,
             title,
@@ -212,15 +228,14 @@ fn is_forbidden(c: char, allow_newline: bool) -> bool {
     }
 }
 
-fn generate_id(created: &DateTime<Utc>, title: &str, author: &str) -> String {
-    let mut hasher = Sha1::new();
-    hasher.update(created.to_rfc3339().as_bytes());
-    hasher.update(b"\0");
-    hasher.update(title.as_bytes());
-    hasher.update(b"\0");
-    hasher.update(author.as_bytes());
-    let digest = hasher.finalize();
-    hex::encode(&digest[..ID_LEN / 2])
+fn random_id() -> String {
+    // fastrand seeds per-thread from the OS, so two processes adding todos
+    // simultaneously draw from independent streams. Not crypto-grade, just
+    // enough variation that natural collisions are rare; the caller still
+    // checks `taken` and re-rolls if needed.
+    let mut bytes = [0u8; ID_LEN / 2];
+    fastrand::fill(&mut bytes);
+    hex::encode(bytes)
 }
 
 #[cfg(test)]
@@ -233,40 +248,27 @@ mod tests {
             .with_timezone(&Utc)
     }
 
+    /// Convenience: build a todo with an empty taken set.
+    fn fresh(title: &str, body: &str, author: &str) -> Todo {
+        Todo::new(
+            title.into(),
+            body.into(),
+            author.into(),
+            fixed_time(),
+            &HashSet::new(),
+        )
+    }
+
     #[test]
     fn id_is_eight_chars_hex() {
-        let t = Todo::new(
-            "Buy milk".into(),
-            String::new(),
-            "Jeremy <j@example.com>".into(),
-            fixed_time(),
-        );
+        let t = fresh("Buy milk", "", "Jeremy <j@example.com>");
         assert_eq!(t.id.len(), ID_LEN);
         assert!(t.id.chars().all(|c| c.is_ascii_hexdigit()));
     }
 
     #[test]
-    fn id_is_deterministic() {
-        let a = Todo::new("X".into(), "".into(), "A".into(), fixed_time());
-        let b = Todo::new("X".into(), "".into(), "A".into(), fixed_time());
-        assert_eq!(a.id, b.id);
-    }
-
-    #[test]
-    fn id_changes_with_title() {
-        let a = Todo::new("X".into(), "".into(), "A".into(), fixed_time());
-        let b = Todo::new("Y".into(), "".into(), "A".into(), fixed_time());
-        assert_ne!(a.id, b.id);
-    }
-
-    #[test]
     fn toml_roundtrip_with_labels_and_comments() {
-        let mut t = Todo::new(
-            "Buy milk".into(),
-            "two litres".into(),
-            "Jeremy <j@example.com>".into(),
-            fixed_time(),
-        );
+        let mut t = fresh("Buy milk", "two litres", "Jeremy <j@example.com>");
         t.apply_label_edits(&[
             LabelEdit::Add("chore".into()),
             LabelEdit::Add("shop".into()),
@@ -286,7 +288,7 @@ mod tests {
 
     #[test]
     fn open_todo_omits_done_and_empty_collections() {
-        let t = Todo::new("X".into(), "".into(), "A".into(), fixed_time());
+        let t = fresh("X", "", "A");
         let s = t.to_toml().unwrap();
         assert!(!s.contains("done ="));
         assert!(!s.contains("done_by"));
@@ -296,7 +298,7 @@ mod tests {
 
     #[test]
     fn label_edits_idempotent() {
-        let mut t = Todo::new("X".into(), "".into(), "A".into(), fixed_time());
+        let mut t = fresh("X", "", "A");
         let (added, removed) = t.apply_label_edits(&[
             LabelEdit::Add("a".into()),
             LabelEdit::Add("a".into()),
@@ -342,12 +344,7 @@ mod tests {
     }
 
     fn good_todo() -> Todo {
-        Todo::new(
-            "Buy milk".into(),
-            "two litres".into(),
-            "Jeremy <j@example.com>".into(),
-            fixed_time(),
-        )
+        fresh("Buy milk", "two litres", "Jeremy <j@example.com>")
     }
 
     #[test]
@@ -397,5 +394,29 @@ mod tests {
         let mut t = good_todo();
         t.add_comment("Alice\x7F".into(), "hi".into(), fixed_time());
         assert!(validate_loaded(&t).is_err());
+    }
+
+    #[test]
+    fn new_re_rolls_when_first_draw_is_taken() {
+        // Seed deterministically, draw an id, then seed again with the same
+        // value but mark that id taken. The next draw will produce the same
+        // first id, see it's taken, and re-roll — so the resulting id must
+        // differ from `first_id`.
+        fastrand::seed(0xC0FFEE);
+        let first_id = random_id();
+
+        fastrand::seed(0xC0FFEE);
+        let mut taken = HashSet::new();
+        taken.insert(first_id.as_str());
+        let t = Todo::new(
+            "x".into(),
+            String::new(),
+            "a".into(),
+            fixed_time(),
+            &taken,
+        );
+        assert_ne!(t.id, first_id);
+        assert_eq!(t.id.len(), ID_LEN);
+        assert!(t.id.chars().all(|c| c.is_ascii_hexdigit()));
     }
 }
