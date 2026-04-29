@@ -115,6 +115,27 @@ refspec (`+todo:todo`) would overwrite local changes. The non-forcing form
 fails and makes you notice. Resolving a diverged `todo` means a manual
 `git merge` between the two tips.
 
+Since you never check out `todo`, the easiest fix is a permanent worktree
+at `.todo/` pointing at the `todo` branch. Add it once per clone, ignore
+the directory, and your main working tree stays on whatever branch you
+had open:
+
+```sh
+git worktree add .todo todo
+echo '/.todo/' >> .gitignore         # commit on main
+```
+
+Then resolving divergence is:
+
+```sh
+git fetch origin todo                # updates origin/todo only
+git -C .todo merge origin/todo       # merge commit, usually no conflicts
+git -C .todo push origin todo
+```
+
+Each todo lives in its own TOML file, so commits from different machines
+rarely touch the same path and the merge is usually clean.
+
 ## How it stores data
 
 Every change is one commit on `refs/heads/todo`. The branch's tree is a full
